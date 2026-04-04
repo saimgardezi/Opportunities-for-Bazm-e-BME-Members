@@ -1,11 +1,18 @@
 {
   "version": 2,
-  "builds": [
-    { "src": "api/search.js", "use": "@vercel/node" },
-    { "src": "public/index.html", "use": "@vercel/static" }
+  "public": true,
+  "rewrites": [
+    { "source": "/api/(.*)", "destination": "/api/$1" },
+    { "source": "/(.*)", "destination": "/public/index.html" }
   ],
-  "routes": [
-    { "src": "/api/search", "dest": "/api/search.js" },
-    { "src": "/(.*)", "dest": "/public/index.html" }
+  "headers": [
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        { "key": "Access-Control-Allow-Origin", "value": "*" },
+        { "key": "Access-Control-Allow-Methods", "value": "GET, POST, OPTIONS" },
+        { "key": "Access-Control-Allow-Headers", "value": "Content-Type" }
+      ]
+    }
   ]
 }
