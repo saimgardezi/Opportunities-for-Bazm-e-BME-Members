@@ -29,7 +29,7 @@ const TYPE_CONFIG = {
     contextNote: "EngD positions are industry-focused research degrees, mostly in the UK. Include CDT programmes.",
   },
   "Summer School": {
-    searchHint: "summer school programme workshop intensive training biomedical 2025 2026",
+    searchHint: "summer school programme workshop intensive training biomedical 2025",
     sources: "embl.org, embo.org, febs.org, university summer school pages, euraxess",
     fundedLabel: "funded with fellowship or fee waiver",
     extraFields: `"supervisor": "organiser name or Not specified"`,
@@ -115,10 +115,9 @@ Output ONLY the JSON array. Nothing else.`;
         "Content-Type": "application/json",
         "x-api-key": apiKey,
         "anthropic-version": "2023-06-01",
-        "anthropic-beta": "web-search-2025-03-05",
       },
       body: JSON.stringify({
-        model: "claude-sonnet-4-5",
+        model: "claude-sonnet-4-6",
         max_tokens: 4000,
         system: systemPrompt,
         tools: [{ type: "web_search_20250305", name: "web_search" }],
@@ -128,11 +127,8 @@ Output ONLY the JSON array. Nothing else.`;
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error("Anthropic API error:", response.status, errorText);
-      return jsonResponse(
-        { error: `API error ${response.status}. Check your API key and try again.` },
-        500
-      );
+      console.error("Anthropic API responded with error:", response.status, errorText);
+      return jsonResponse({ error: `API error ${response.status}. Check your API key and try again.` }, 500);
     }
 
     const data = await response.json();
@@ -157,7 +153,7 @@ Output ONLY the JSON array. Nothing else.`;
     try {
       positions = JSON.parse(jsonText);
     } catch (parseError) {
-      console.error("JSON parse failed:", parseError, "Raw:", jsonText.slice(0, 200));
+      console.error("JSON parse failed:", parseError, "Raw text:", jsonText.slice(0, 200));
       return jsonResponse({ error: "Could not parse results. Please try again." }, 500);
     }
 
