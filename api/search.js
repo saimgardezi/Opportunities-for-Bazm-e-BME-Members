@@ -13,8 +13,8 @@ module.exports = async function (req, res) {
     });
 
     const response = await client.messages.create({
-      model: "claude-3-5-haiku-latest",
-      max_tokens: 800,
+      model: "claude-3-7-sonnet-latest",
+      max_tokens: 1000,
       messages: [
         {
           role: "user",
