@@ -1,0 +1,10 @@
+{
+  "name": "opportunities-app",
+  "version": "1.0.0",
+  "description": "BME opportunities finder",
+  "main": "index.js",
+  "type": "commonjs",
+  "dependencies": {
+    "@anthropic-ai/sdk": "latest"
+  }
+}
