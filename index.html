@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>BME Opportunity Finder</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --teal-50:#E1F5EE; --teal-500:#1D9E75; --teal-700:#0F6E56;
+      --blue-50:#E6F1FB; --blue-800:#0C447C;
+      --purple-50:#EEEDFE; --purple-800:#3C3489;
+      --amber-50:#FAEEDA; --amber-800:#633806;
+      --coral-50:#FAECE7; --coral-800:#712B13;
+      --green-50:#EAF3DE; --green-800:#27500A;
+      --gray-200:#E9ECEF; --gray-300:#DEE2E6; --gray-400:#CED4DA;
+      --gray-500:#ADB5BD; --gray-600:#6C757D; --gray-700:#495057;
+      --gray-900:#212529;
+      --radius-sm:6px; --radius-md:10px; --radius-lg:14px; --radius-xl:20px;
+      --shadow-sm:0 1px 3px rgba(0,0,0,0.06),0 1px 2px rgba(0,0,0,0.04);
+      --shadow-md:0 4px 12px rgba(0,0,0,0.08),0 2px 4px rgba(0,0,0,0.04);
+    }
+    body { font-family:'DM Sans',sans-serif; background:#F4F7F5; color:var(--gray-900); min-height:100vh; line-height:1.6; }
+
+    nav { background:white; border-bottom:1px solid var(--gray-200); padding:0 2rem; height:58px; display:flex; align-items:center; justify-content:space-between; position:sticky; top:0; z-index:100; }
+    .nav-brand { display:flex; align-items:center; gap:10px; font-size:15px; font-weight:600; }
+    .nav-icon { width:30px; height:30px; background:var(--teal-500); border-radius:var(--radius-sm); display:flex; align-items:center; justify-content:center; color:white; font-size:14px; }
+    .nav-badge { font-size:11px; padding:2px 8px; background:var(--teal-50); color:var(--teal-700); border-radius:20px; font-weight:500; }
+
+    .hero { background:white; border-bottom:1px solid var(--gray-200); padding:2.5rem 2rem 2rem; text-align:center; }
+    .hero-eyebrow { font-size:12px; font-weight:500; letter-spacing:0.08em; text-transform:uppercase; color:var(--teal-500); margin-bottom:10px; }
+    .hero h1 { font-size:clamp(22px,4vw,34px); font-weight:600; margin-bottom:8px; line-height:1.25; }
+    .hero h1 span { color:var(--teal-500); }
+    .hero p { font-size:15px; color:var(--gray-600); max-width:520px; margin:0 auto 1.75rem; }
+
+    .type-tabs { display:flex; gap:6px; flex-wrap:wrap; justify-content:center; margin-bottom:1.5rem; }
+    .type-tab { font-size:13px; font-weight:500; padding:7px 16px; border-radius:20px; border:1.5px solid var(--gray-200); background:white; color:var(--gray-600); cursor:pointer; transition:all 0.15s; font-family:'DM Sans',sans-serif; display:flex; align-items:center; gap:6px; }
+    .type-tab:hover { border-color:var(--teal-500); color:var(--teal-700); background:var(--teal-50); }
+    .type-tab.active { border-color:var(--teal-500); background:var(--teal-500); color:white; }
+
+    .search-wrap { max-width:640px; margin:0 auto; }
+    .search-box { display:flex; background:white; border:1.5px solid var(--gray-300); border-radius:var(--radius-xl); overflow:hidden; box-shadow:var(--shadow-sm); transition:border-color 0.2s,box-shadow 0.2s; }
+    .search-box:focus-within { border-color:var(--teal-500); box-shadow:0 0 0 3px rgba(29,158,117,0.12); }
+    .search-box input { flex:1; padding:13px 18px; border:none; outline:none; font-size:15px; font-family:'DM Sans',sans-serif; color:var(--gray-900); background:transparent; }
+    .search-box input::placeholder { color:var(--gray-400); }
+    .btn-search { margin:5px; padding:8px 20px; background:var(--teal-500); color:white; border:none; border-radius:var(--radius-xl); font-size:14px; font-weight:500; font-family:'DM Sans',sans-serif; cursor:pointer; white-space:nowrap; transition:background 0.15s,transform 0.1s; }
+    .btn-search:hover { background:var(--teal-700); }
+    .btn-search:active { transform:scale(0.97); }
+    .btn-search:disabled { opacity:0.5; cursor:not-allowed; transform:none; }
+
+    .main { max-width:900px; margin:2rem auto; padding:0 1.5rem; }
+    .chips-label { font-size:12px; font-weight:500; color:var(--gray-500); text-transform:uppercase; letter-spacing:0.06em; margin-bottom:8px; }
+    .chips { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:1.5rem; }
+    .chip { font-size:13px; padding:5px 13px; border-radius:20px; border:1px solid var(--gray-300); background:white; color:var(--gray-600); cursor:pointer; transition:all 0.15s; font-family:'DM Sans',sans-serif; }
+    .chip:hover { border-color:var(--teal-500); color:var(--teal-700); background:var(--teal-50); }
+    .chip.active { background:var(--teal-50); border-color:var(--teal-500); color:var(--teal-700); font-weight:500; }
+
+    .toolbar { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; margin-bottom:1.25rem; }
+    .filters { display:flex; gap:8px; flex-wrap:wrap; }
+    .filter-select { padding:7px 12px; border-radius:var(--radius-md); border:1px solid var(--gray-200); background:white; color:var(--gray-700); font-size:13px; font-family:'DM Sans',sans-serif; cursor:pointer; outline:none; box-shadow:var(--shadow-sm); }
+    .filter-select:focus { border-color:var(--teal-500); }
+    .status { font-size:13px; color:var(--gray-500); display:flex; align-items:center; gap:7px; }
+    .spinner { width:13px; height:13px; border:1.5px solid var(--gray-200); border-top-color:var(--teal-500); border-radius:50%; animation:spin 0.7s linear infinite; flex-shrink:0; }
+    @keyframes spin { to { transform:rotate(360deg); } }
+
+    .results { display:flex; flex-direction:column; gap:12px; }
+    .card { background:white; border:1px solid var(--gray-200); border-radius:var(--radius-lg); padding:1.25rem 1.5rem; box-shadow:var(--shadow-sm); transition:border-color 0.15s,box-shadow 0.15s; animation:fadeIn 0.3s ease both; }
+    .card:hover { border-color:var(--gray-300); box-shadow:var(--shadow-md); }
+    @keyframes fadeIn { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:none; } }
+    .card-row1 { display:flex; justify-content:space-between; align-items:flex-start; gap:10px; margin-bottom:6px; }
+    .card-title { font-size:15px; font-weight:600; line-height:1.4; }
+    .badges { display:flex; gap:5px; flex-wrap:wrap; flex-shrink:0; }
+    .badge { font-size:11px; font-weight:500; padding:3px 8px; border-radius:20px; white-space:nowrap; }
+    .b-type-phd    { background:var(--purple-50); color:var(--purple-800); }
+    .b-type-engd   { background:var(--blue-50);   color:var(--blue-800);   }
+    .b-type-summer { background:var(--green-50);  color:var(--green-800);  }
+    .b-type-intern { background:var(--amber-50);  color:var(--amber-800);  }
+    .b-type-job    { background:var(--coral-50);  color:var(--coral-800);  }
+    .b-funded      { background:var(--teal-50);   color:var(--teal-700);   }
+    .b-deadline    { background:var(--amber-50);  color:var(--amber-800);  }
+    .b-country     { background:var(--blue-50);   color:var(--blue-800);   }
+    .b-field       { background:var(--purple-50); color:var(--purple-800); }
+    .card-meta { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:8px; }
+    .card-uni { font-size:13px; font-weight:500; color:var(--gray-700); }
+    .sep { color:var(--gray-300); font-size:12px; }
+    .card-extra { font-size:12px; color:var(--gray-500); }
+    .card-desc { font-size:13px; color:var(--gray-600); line-height:1.65; margin-bottom:12px; }
+    .card-actions { display:flex; gap:8px; flex-wrap:wrap; }
+    .btn-link { font-size:12px; font-weight:500; padding:6px 14px; border-radius:var(--radius-md); border:1px solid var(--gray-200); background:white; color:var(--gray-700); cursor:pointer; font-family:'DM Sans',sans-serif; text-decoration:none; display:inline-flex; align-items:center; gap:4px; transition:all 0.15s; }
+    .btn-link:hover { border-color:var(--teal-500); color:var(--teal-700); background:var(--teal-50); }
+    .btn-link.primary { background:var(--teal-500); color:white; border-color:var(--teal-500); }
+    .btn-link.primary:hover { background:var(--teal-700); border-color:var(--teal-700); color:white; }
+
+    .empty { text-align:center; padding:4rem 1rem; }
+    .empty-icon { font-size:40px; margin-bottom:12px; }
+    .empty p { font-size:14px; color:var(--gray-500); }
+
+    footer { text-align:center; padding:2rem; font-size:12px; color:var(--gray-400); border-top:1px solid var(--gray-200); margin-top:3rem; background:white; }
+    footer a { color:var(--teal-500); text-decoration:none; }
+
+    @media (max-width:600px) {
+      nav { padding:0 1rem; }
+      .hero { padding:2rem 1rem 1.5rem; }
+      .main { padding:0 1rem; margin:1.5rem auto; }
+      .card { padding:1rem; }
+      .card-row1 { flex-direction:column; }
+      .type-tab { padding:6px 11px; font-size:12px; }
+    }
+  </style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-brand">
+    <div class="nav-icon">🔬</div>
+    BME Opportunity Finder
+  </div>
+  <span class="nav-badge">AI-powered · Live search</span>
+</nav>
+
+<div class="hero">
+  <div class="hero-eyebrow">Biomedical Engineering — Worldwide</div>
+  <h1>Find your next <span id="heroLabel">PhD position</span><br>anywhere in the world</h1>
+  <p>Searches live university listings, EURAXESS, Nature Careers, LinkedIn, FindAPhD and more in real time.</p>
+
+  <div class="type-tabs">
+    <button class="type-tab active" data-type="PhD Position"  data-badge="b-type-phd"    onclick="setType(this)">🎓 PhD</button>
+    <button class="type-tab"        data-type="EngD Position" data-badge="b-type-engd"   onclick="setType(this)">⚙️ EngD</button>
+    <button class="type-tab"        data-type="Summer School" data-badge="b-type-summer" onclick="setType(this)">☀️ Summer School</button>
+    <button class="type-tab"        data-type="Internship"    data-badge="b-type-intern" onclick="setType(this)">💼 Internship</button>
+    <button class="type-tab"        data-type="Job"           data-badge="b-type-job"    onclick="setType(this)">🏢 Job</button>
+  </div>
+
+  <div class="search-wrap">
+    <div class="search-box">
+      <input type="text" id="query" placeholder="e.g. neural interfaces, tissue engineering, medical imaging..." />
+      <button class="btn-search" id="searchBtn" onclick="runSearch()">Search →</button>
+    </div>
+  </div>
+</div>
+
+<div class="main">
+  <div class="chips-label">Quick topics</div>
+  <div class="chips" id="chipsRow"></div>
+
+  <div class="toolbar">
+    <div class="filters">
+      <select class="filter-select" id="regionFilter">
+        <option value="all">All regions</option>
+        <option value="Europe">Europe</option>
+        <option value="North America">North America</option>
+        <option value="Asia">Asia</option>
+        <option value="Australia/Oceania">Australia / Oceania</option>
+      </select>
+      <select class="filter-select" id="fundingFilter">
+        <option value="all">Any funding / compensation</option>
+        <option value="funded">Funded / paid only</option>
+      </select>
+    </div>
+    <div class="status" id="status">Select an opportunity type above, then click Search.</div>
+  </div>
+
+  <div class="results" id="results">
+    <div class="empty"><div class="empty-icon">🧬</div><p>Your results will appear here.</p></div>
+  </div>
+</div>
+
+<footer>
+  Powered by <a href="https://anthropic.com" target="_blank">Claude AI</a> with live web search &nbsp;·&nbsp; Results sourced in real time from public listings
+</footer>
+
+<script>
+const TOPICS = {
+  "PhD Position": [
+    ["All areas",           "biomedical engineering PhD positions 2025 2026"],
+    ["Neural engineering",  "neural engineering neurotech PhD positions 2025 2026"],
+    ["Tissue engineering",  "tissue engineering regenerative medicine PhD 2025 2026"],
+    ["Medical imaging",     "medical imaging AI diagnostics PhD positions 2025 2026"],
+    ["Biomechanics",        "biomechanics prosthetics wearable sensors PhD 2025 2026"],
+    ["Bioinformatics",      "bioinformatics computational biology genomics PhD 2025 2026"],
+    ["Drug delivery",       "drug delivery nanomedicine PhD positions 2025 2026"],
+    ["Cardiovascular",      "cardiac vascular biomedical devices PhD 2025 2026"],
+  ],
+  "EngD Position": [
+    ["All areas",           "biomedical engineering EngD positions 2025 2026"],
+    ["Medical devices",     "medical devices EngD engineering doctorate 2025 2026"],
+    ["Robotics & rehab",    "rehabilitation robotics EngD positions 2025 2026"],
+    ["Diagnostics",         "point of care diagnostics EngD 2025 2026"],
+    ["Biomaterials",        "biomaterials implants EngD engineering doctorate 2025 2026"],
+    ["Digital health",      "digital health wearables EngD positions 2025 2026"],
+  ],
+  "Summer School": [
+    ["All areas",           "biomedical engineering summer school 2025"],
+    ["Neuroscience",        "neuroscience neurotechnology summer school 2025"],
+    ["Imaging & AI",        "medical imaging machine learning summer school 2025"],
+    ["Synthetic biology",   "synthetic biology summer school 2025"],
+    ["Bioinformatics",      "bioinformatics genomics summer school 2025"],
+    ["Global health",       "global health biomedical engineering summer school 2025"],
+  ],
+  "Internship": [
+    ["All areas",           "biomedical engineering internship 2025 2026"],
+    ["MedTech industry",    "medtech medical device company internship 2025 2026"],
+    ["Research lab",        "biomedical engineering research internship 2025 2026"],
+    ["AI & diagnostics",    "healthcare AI diagnostics internship 2025 2026"],
+    ["Pharma & biotech",    "pharmaceutical biotech internship biomedical 2025 2026"],
+    ["Clinical engineering","clinical engineering hospital internship 2025 2026"],
+  ],
+  "Job": [
+    ["All roles",           "biomedical engineering jobs 2025 2026"],
+    ["R&D Engineer",        "biomedical R&D engineer jobs 2025 2026"],
+    ["Regulatory affairs",  "regulatory affairs medical device engineer jobs 2025 2026"],
+    ["Data scientist",      "healthcare data scientist biomedical jobs 2025 2026"],
+    ["Clinical engineer",   "clinical engineer NHS hospital jobs 2025 2026"],
+    ["Postdoc",             "postdoc biomedical engineering research positions 2025 2026"],
+  ],
+};
+
+const HERO = {
+  "PhD Position":"PhD position","EngD Position":"EngD position",
+  "Summer School":"summer school","Internship":"internship","Job":"job"
+};
+
+let currentType = "PhD Position";
+let currentBadge = "b-type-phd";
+
+function setType(el) {
+  document.querySelectorAll('.type-tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  currentType  = el.dataset.type;
+  currentBadge = el.dataset.badge;
+  document.getElementById('heroLabel').textContent = HERO[currentType];
+  renderChips();
+  document.getElementById('results').innerHTML = '<div class="empty"><div class="empty-icon">🧬</div><p>Your results will appear here.</p></div>';
+  document.getElementById('status').innerHTML = '<span>Select a topic and click Search.</span>';
+}
+
+function renderChips() {
+  const topics = TOPICS[currentType] || [];
+  document.getElementById('chipsRow').innerHTML = topics.map(([label, q], i) =>
+    `<span class="chip${i===0?' active':''}" data-q="${esc(q)}" onclick="setChip(this)">${label}</span>`
+  ).join('');
+  if (topics.length) document.getElementById('query').value = topics[0][1];
+}
+
+function setChip(el) {
+  document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('query').value = el.dataset.q;
+}
+
+function setStatus(msg, loading=false) {
+  document.getElementById('status').innerHTML = loading
+    ? `<div class="spinner"></div><span>${msg}</span>`
+    : `<span>${msg}</span>`;
+}
+
+function esc(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function renderCard(p, i) {
+  const isAcademic = ["PhD Position","EngD Position","Summer School"].includes(currentType);
+  const isJob      = currentType === "Job" || currentType === "Internship";
+  const org        = p.university || p.organisation || '';
+  const fundedTxt  = {"Job":"Paid","Internship":"Paid","Summer School":"Funded"}[currentType] || "Funded";
+  const deadlinePfx= {"Summer School":"Apply by: ","Job":"Closes: ","Internship":"Closes: "}[currentType] || "";
+  const linkTxt    = {"Summer School":"View programme ↗","Job":"View job ↗","Internship":"View internship ↗"}[currentType] || "View position ↗";
+  const extraLabel = {"Job":"Company","Internship":"Host","Summer School":"Organiser"}[currentType] || "Supervisor";
+
+  return `<div class="card" style="animation-delay:${i*55}ms">
+    <div class="card-row1">
+      <div class="card-title">${esc(p.title)}</div>
+      <div class="badges">
+        <span class="badge ${currentBadge}">${esc(currentType)}</span>
+        ${p.funded ? `<span class="badge b-funded">✓ ${fundedTxt}</span>` : ''}
+        ${p.deadline && p.deadline!=='Open' ? `<span class="badge b-deadline">${deadlinePfx}${esc(p.deadline)}</span>` : ''}
+      </div>
+    </div>
+    <div class="card-meta">
+      <span class="card-uni">${esc(org)}</span>
+      <span class="sep">·</span>
+      <span class="badge b-country" style="font-size:11px;padding:2px 8px">${esc(p.country)}</span>
+      <span class="sep">·</span>
+      <span class="badge b-field" style="font-size:11px;padding:2px 8px">${esc(p.field)}</span>
+      ${p.supervisor && p.supervisor!=='Not specified'
+        ? `<span class="sep">·</span><span class="card-extra">${extraLabel}: ${esc(p.supervisor)}</span>` : ''}
+    </div>
+    <div class="card-desc">${esc(p.description)}</div>
+    <div class="card-actions">
+      ${p.url ? `<a href="${esc(p.url)}" target="_blank" rel="noopener" class="btn-link primary">${linkTxt}</a>` : ''}
+      ${isAcademic ? `<a href="https://www.findaphd.com/phds/search/?Keywords=${encodeURIComponent((p.field||'')+' '+(org))}" target="_blank" rel="noopener" class="btn-link">FindAPhD ↗</a>` : ''}
+      ${isJob ? `<a href="https://www.linkedin.com/jobs/search/?keywords=${encodeURIComponent(p.title+' biomedical engineering')}" target="_blank" rel="noopener" class="btn-link">LinkedIn ↗</a>` : ''}
+    </div>
+  </div>`;
+}
+
+async function runSearch() {
+  const query = document.getElementById('query').value.trim();
+  if (!query) return;
+  const btn = document.getElementById('searchBtn');
+  btn.disabled = true;
+  setStatus(`Searching for ${currentType.toLowerCase()} opportunities...`, true);
+  document.getElementById('results').innerHTML = '';
+
+  const region  = document.getElementById('regionFilter').value;
+  const funding = document.getElementById('fundingFilter').value;
+
+  try {
+    const res = await fetch('/api/search', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query, region, funding, opportunityType: currentType })
+    });
+    const data = await res.json();
+    if (data.error) {
+      setStatus(data.error);
+      document.getElementById('results').innerHTML = `<div class="empty"><div class="empty-icon">⚠️</div><p>${esc(data.error)}</p></div>`;
+      return;
+    }
+    const positions = data.positions || [];
+    if (!positions.length) {
+      setStatus('No results found. Try a broader query or change filters.');
+      document.getElementById('results').innerHTML = `<div class="empty"><div class="empty-icon">🔭</div><p>No results found. Try a different topic or broaden your filters.</p></div>`;
+      return;
+    }
+    document.getElementById('results').innerHTML = positions.map(renderCard).join('');
+    setStatus(`Found ${positions.length} result${positions.length!==1?'s':''} · Live data as of today`);
+  } catch(err) {
+    setStatus('Network error. Please try again.');
+    document.getElementById('results').innerHTML = `<div class="empty"><div class="empty-icon">⚠️</div><p>Something went wrong. Please try again.</p></div>`;
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+window.addEventListener('keydown', e => {
+  if (e.key==='Enter' && document.activeElement.id==='query') runSearch();
+});
+
+renderChips();
+</script>
+</body>
+</html>
