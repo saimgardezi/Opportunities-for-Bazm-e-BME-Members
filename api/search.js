@@ -1,6 +1,6 @@
-import Anthropic from "@anthropic-ai/sdk";
+const { Anthropic } = require("@anthropic-ai/sdk");
 
-export default async function handler(req, res) {
+module.exports = async function (req, res) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "POST only" });
   }
@@ -13,7 +13,7 @@ export default async function handler(req, res) {
     });
 
     const response = await client.messages.create({
-      model: "claude-3-haiku-20240307",
+      model: "claude-3-5-haiku-latest",
       max_tokens: 800,
       messages: [
         {
@@ -23,12 +23,12 @@ export default async function handler(req, res) {
       ]
     });
 
-    res.status(200).json({
+    return res.status(200).json({
       results: response.content[0].text
     });
 
   } catch (error) {
     console.error("API ERROR:", error);
-    res.status(500).json({ error: error.message });
+    return res.status(500).json({ error: error.message });
   }
-}
+};
