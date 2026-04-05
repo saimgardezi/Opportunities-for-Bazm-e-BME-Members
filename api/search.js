@@ -1,170 +1,138 @@
-export const maxDuration = 60;
+// api/search.js  –  Vercel Serverless Function
+// Calls Anthropic Claude with the built-in web_search tool
 
-const CORS_HEADERS = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type",
-};
+module.exports = async function handler(req, res) {
+  // ── CORS preflight ────────────────────────────────────────────────────────
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
 
-function jsonResponse(data, status = 200) {
-  return new Response(JSON.stringify(data), {
-    status,
-    headers: { "Content-Type": "application/json", ...CORS_HEADERS },
-  });
-}
+  if (req.method === "OPTIONS") return res.status(200).end();
+  if (req.method !== "POST")
+    return res.status(405).json({ error: "Method not allowed" });
 
-const TYPE_CONFIG = {
-  "PhD Position": {
-    searchHint: "PhD doctoral positions open funded studentships grants fellowships",
-    sources: "findaphd.com, euraxess.ec.europa.eu, jobs.ac.uk, nature.com/naturecareers, academicpositions.com",
-    fundedLabel: "funded with stipend or scholarship",
-    extraFields: `"supervisor": "PI name or Not specified"`,
-    contextNote: "Focus on funded or self-funded doctoral research positions at universities and research institutes.",
-  },
-  "EngD Position": {
-    searchHint: "EngD Engineering Doctorate CDT centre for doctoral training industrial",
-    sources: "findaphd.com, jobs.ac.uk, euraxess, university CDT pages, epsrc.ukri.org",
-    fundedLabel: "funded with stipend",
-    extraFields: `"supervisor": "PI or industrial partner name, or Not specified"`,
-    contextNote: "EngD positions are industry-focused research degrees, mostly in the UK. Include CDT programmes.",
-  },
-  "Summer School": {
-    searchHint: "summer school programme workshop intensive training biomedical 2025",
-    sources: "embl.org, embo.org, febs.org, university summer school pages, euraxess",
-    fundedLabel: "funded with fellowship or fee waiver",
-    extraFields: `"supervisor": "organiser name or Not specified"`,
-    contextNote: "Summer schools and training workshops for biomedical engineering students and early-career researchers.",
-  },
-  "Internship": {
-    searchHint: "internship placement student research biomedical 2025 2026",
-    sources: "linkedin.com/jobs, glassdoor, indeed, company career pages, euraxess, NIH internships",
-    fundedLabel: "paid",
-    extraFields: `"supervisor": "hiring manager or team, or Not specified"`,
-    contextNote: "Paid and unpaid internships in biomedical engineering at companies, hospitals, and research institutes.",
-  },
-  "Job": {
-    searchHint: "job position vacancy engineer scientist researcher biomedical 2025 2026",
-    sources: "linkedin.com/jobs, glassdoor, indeed, jobs.ac.uk, nature careers, company career pages",
-    fundedLabel: "salaried",
-    extraFields: `"supervisor": "hiring team or department, or Not specified"`,
-    contextNote: "Full-time jobs including R&D, clinical engineering, regulatory affairs, data science roles in biomedical engineering.",
-  },
-};
-
-export default async function handler(req) {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: CORS_HEADERS });
-  }
-
-  if (req.method !== "POST") {
-    return jsonResponse({ error: "Method not allowed" }, 405);
-  }
-
+  // ── Validate API key ──────────────────────────────────────────────────────
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
-    return jsonResponse({ error: "ANTHROPIC_API_KEY is not set in environment variables." }, 500);
+    return res.status(500).json({
+      error:
+        "ANTHROPIC_API_KEY is not set. Go to Vercel → Settings → Environment Variables, add it, then Redeploy.",
+    });
   }
 
-  let body;
+  // ── Parse request body ────────────────────────────────────────────────────
+  const { query, type, region, funded } = req.body || {};
+
+  if (!query || !type) {
+    return res.status(400).json({ error: "Missing query or type in request body." });
+  }
+
+  // ── Build prompt ──────────────────────────────────────────────────────────
+  const regionClause =
+    region && region !== "All regions" ? ` in ${region}` : " worldwide";
+
+  const fundingClause =
+    funded === "funded"
+      ? " Only include fully funded / paid positions. Skip unfunded ones."
+      : "";
+
+  const systemPrompt = `You are an expert academic opportunity finder specialising in Biomedical Engineering.
+Your job is to search the web for REAL, CURRENT open positions and return structured results.
+Always search multiple sources: university websites, EURAXESS, Nature Careers, FindAPhD, LinkedIn, ResearchGate, and institutional job boards.
+Return ONLY positions that are currently open or accepting applications.
+Do NOT invent positions. If you cannot find enough, say so honestly.`;
+
+  const userPrompt = `Search for up to 8 open ${type} opportunities in Biomedical Engineering${regionClause}.
+Search query hint: "${query}"
+${fundingClause}
+
+For EACH opportunity you find, return a JSON object inside a markdown code block with this exact structure:
+
+\`\`\`json
+[
+  {
+    "title": "Position title",
+    "institution": "University or company name",
+    "location": "City, Country",
+    "deadline": "YYYY-MM-DD or 'Open until filled' or 'Unknown'",
+    "funding": "Fully funded / Stipend: €XXXX/month / Unpaid / Unknown",
+    "description": "2-3 sentence summary of the project and requirements.",
+    "link": "https://direct-link-to-the-posting",
+    "source": "Where you found it, e.g. EURAXESS, FindAPhD"
+  }
+]
+\`\`\`
+
+If fewer than 8 results are found, return what you have. Do not pad with fake results.`;
+
+  // ── Call Anthropic API ────────────────────────────────────────────────────
   try {
-    body = await req.json();
-  } catch {
-    return jsonResponse({ error: "Invalid JSON in request body." }, 400);
-  }
-
-  const { query, region = "all", funding = "all", opportunityType = "PhD Position" } = body;
-
-  if (!query || query.trim() === "") {
-    return jsonResponse({ error: "Search query is required." }, 400);
-  }
-
-  const validTypes = ["PhD Position", "EngD Position", "Summer School", "Internship", "Job"];
-  const safeType = validTypes.includes(opportunityType) ? opportunityType : "PhD Position";
-  const cfg = TYPE_CONFIG[safeType];
-
-  const systemPrompt = `You are a specialist search assistant for Biomedical Engineering opportunities.
-Search the web and find real currently open ${safeType} opportunities in Biomedical Engineering.
-Use these sources: ${cfg.sources}.
-Search keywords: "${cfg.searchHint}".
-${cfg.contextNote}
-
-Return ONLY a valid JSON array with up to 8 results. No markdown, no explanation, just the JSON array.
-Each object must have exactly these fields:
-{
-  "title": "specific position title",
-  "university": "institution or company name",
-  "country": "country name",
-  "region": "one of: Europe, North America, Asia, Australia/Oceania, Other",
-  "field": "specific BME subfield e.g. Neural Interfaces, Medical Imaging, Biomaterials",
-  "funded": true or false,
-  "deadline": "e.g. Rolling, June 2025, Open",
-  "description": "2-3 sentence summary of the opportunity and requirements",
-  "url": "direct link if found, else empty string",
-  ${cfg.extraFields}
-}
-${region !== "all" ? `Only include results from region: ${region}.` : ""}
-${funding === "funded" ? `Only include ${cfg.fundedLabel} opportunities.` : ""}
-Output ONLY the JSON array. Nothing else.`;
-
-  const userMessage = `Find current open ${safeType} opportunities in Biomedical Engineering related to: ${query}. Today is ${new Date().toISOString().split("T")[0]}.`;
-
-  try {
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
+    const anthropicRes = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         "x-api-key": apiKey,
         "anthropic-version": "2023-06-01",
+        "anthropic-beta": "web-search-2025-03-05",
       },
       body: JSON.stringify({
-        model: "claude-sonnet-4-6",
-        max_tokens: 4000,
+        model: "claude-opus-4-5-20251101",
+        max_tokens: 4096,
         system: systemPrompt,
-        tools: [{ type: "web_search_20250305", name: "web_search" }],
-        messages: [{ role: "user", content: userMessage }],
+        tools: [
+          {
+            type: "web_search_20250305",
+            name: "web_search",
+          },
+        ],
+        messages: [{ role: "user", content: userPrompt }],
       }),
     });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error("Anthropic API responded with error:", response.status, errorText);
-      return jsonResponse({ error: `API error ${response.status}. Check your API key and try again.` }, 500);
-    }
-
-    const data = await response.json();
-
-    let jsonText = "";
-    for (const block of data.content || []) {
-      if (block.type === "text") {
-        const raw = block.text.trim();
-        if (raw.startsWith("[")) { jsonText = raw; break; }
-        const fenced = raw.match(/```(?:json)?\s*(\[[\s\S]*?\])\s*```/);
-        if (fenced) { jsonText = fenced[1]; break; }
-        const inline = raw.match(/\[[\s\S]*\]/);
-        if (inline) { jsonText = inline[0]; break; }
+    // ── Handle HTTP-level errors ──────────────────────────────────────────
+    if (!anthropicRes.ok) {
+      let errBody;
+      try {
+        errBody = await anthropicRes.json();
+      } catch (_) {
+        errBody = { error: { message: `HTTP ${anthropicRes.status}` } };
       }
+
+      const msg = errBody?.error?.message || `HTTP ${anthropicRes.status}`;
+
+      // Friendly messages for common errors
+      if (anthropicRes.status === 401)
+        return res.status(401).json({ error: `Invalid API key. ${msg}` });
+      if (anthropicRes.status === 429)
+        return res.status(429).json({ error: `Rate limit reached. Please wait a moment and try again. ${msg}` });
+      if (anthropicRes.status === 400)
+        return res.status(400).json({ error: `Bad request to Anthropic API: ${msg}` });
+
+      return res.status(anthropicRes.status).json({ error: msg });
     }
 
-    if (!jsonText) {
-      return jsonResponse({ positions: [] });
+    // ── Parse response ────────────────────────────────────────────────────
+    const data = await anthropicRes.json();
+
+    // Extract all text blocks (Claude may interleave tool use and text)
+    const textContent = (data.content || [])
+      .filter((block) => block.type === "text")
+      .map((block) => block.text)
+      .join("\n\n");
+
+    if (!textContent) {
+      return res.status(200).json({
+        result: "No text response returned by Claude. The model may have used the search tool but produced no output. Please try again.",
+        raw: data,
+      });
     }
 
-    let positions;
-    try {
-      positions = JSON.parse(jsonText);
-    } catch (parseError) {
-      console.error("JSON parse failed:", parseError, "Raw text:", jsonText.slice(0, 200));
-      return jsonResponse({ error: "Could not parse results. Please try again." }, 500);
-    }
-
-    if (!Array.isArray(positions)) {
-      return jsonResponse({ positions: [] });
-    }
-
-    return jsonResponse({ positions });
+    return res.status(200).json({ result: textContent });
 
   } catch (err) {
-    console.error("Unexpected error:", err.message);
-    return jsonResponse({ error: "Unexpected server error. Please try again." }, 500);
+    console.error("search.js error:", err);
+    return res.status(500).json({
+      error: `Server error: ${err.message}. Check Vercel function logs for details.`,
+    });
   }
-}
+};
